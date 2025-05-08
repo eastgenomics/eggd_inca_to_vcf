@@ -307,7 +307,7 @@ def intialise_vcf(aggregated_df, minimal_vcf):
         vcf_file.write("\n".join(vcf_lines) + "\n")
 
 
-def write_vcf_header(genome_build):
+def write_vcf_header(genome_build, header_filename):
     '''
     Write VCF header by populating INFO fields and specifying contigs
 
@@ -316,10 +316,9 @@ def write_vcf_header(genome_build):
     genome_build : str
         Genome build to specify contigs in header
     '''
-    with open("header.vcf", "w") as header_vcf:
-        # TODO: dynamic type, change INFO_FIELDS dict above
-        for id, description in config.INFO_FIELDS.items():
-            info_line = f'##INFO=<ID={id},Number=1,Type=String,Description="{description}">\n'
+    with open(header_filename, "w") as header_vcf:
+        for field_info in config.INFO_FIELDS.values():
+            info_line = f'##INFO=<ID={field_info["id"]},Number={field_info["number"]},Type={field_info["type"]},Description="{field_info["description"]}">\n'
             header_vcf.write(info_line)
         
         if genome_build == "GRCh37":
@@ -371,6 +370,7 @@ def main():
     args = parse_args()
 
     minimal_vcf = "minimal_vcf.vcf"
+    header_filename = "header.vcf"
     aggregated_database = f"{'_'.join(args.probeset)}_aggregated_database.tsv"
 
     cleaned_csv = clean_csv(args.input_file)
@@ -378,7 +378,7 @@ def main():
     aggregated_df = aggregate_uniq_vars(probeset_df, args.probeset, aggregated_database)
 
     intialise_vcf(aggregated_df, minimal_vcf)
-    write_vcf_header(args.genome_build)
+    write_vcf_header(args.genome_build, header_filename)
     index_annotations(aggregated_database)
     bcftools_annotate_vcf(aggregated_database, minimal_vcf, args.output_file, args.output_dir)
 

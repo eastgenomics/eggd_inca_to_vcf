@@ -1,10 +1,36 @@
 INFO_FIELDS = {
-    'LATEST_GERMLINE': 'latest_germline',
-    'LATEST_ONCOGENICITY': 'latest_oncogenicity',
-    'LATEST_DATE': 'latest_date',
-    'LATEST_SAMPLE_ID': 'latest_sample_id',
-    'TOTAL_CLASSIFICATIONS': 'total_classifications',
-    'AGGREGATED_HGVS': 'aggregated_hgvs'}
+    "latest_germline": {
+        "id": "LATEST_GERMLINE",
+        "number": 1,
+        "type": "String",
+        "description": "Latest germline classification"},
+    "latest_oncogenicity": {
+        "id": "LATEST_ONCOGENICITY",
+        "number": 1,
+        "type": "String",
+        "description": "Latest somatic classification"},
+    "latest_date": {
+        "id": "LATEST_DATE",
+        "number": 1,
+        "type": "String",
+        "description": "Latest date of classification"},
+    "latest_sample_id": {
+        "id": "LATEST_SAMPLE_ID",
+        "number": 1,
+        "type": "String",
+        "description": "Latest sample ID with classification"},
+    "total_classifications": {
+        "id": "TOTAL_CLASSIFICATIONS",
+        "number": 1,
+    # this breaks the script when set to be integer ???
+        "type": "String",
+        "description": "Total number of classification"},
+    "aggregated_hgvs": {
+        "id": "AGGREGATED_HGVS",
+        "number": 1,
+        "type": "String",
+        "description": "Aggregated HGVSc"}
+    }
 
 GRCh37_CONTIG = '''\
 ##contig=<ID=1,length=249250621>
