@@ -4,6 +4,7 @@ import subprocess
 import config
 import pysam
 import pysam.bcftools
+import os
 
 
 def parse_args() -> argparse.Namespace:
@@ -59,6 +60,12 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Bool to keep intermediate tsv annotation file"
         ),
+    )
+
+    parser.add_argument(
+        '--output_dir', 
+        default=os.getcwd(),
+        help="path to output directory"
     )
 
     args = parser.parse_args()
@@ -334,7 +341,7 @@ def index_annotations(aggregated_database):
     pysam.tabix_index(f"{aggregated_database}.gz", seq_col=0, start_col=1, end_col=1)
 
 
-def bcftools_annotate_vcf(aggregated_database, minimal_vcf, output_file):
+def bcftools_annotate_vcf(aggregated_database, minimal_vcf, output_file, output_dir):
     '''
     Run bcftools annotate to annotate the minimal VCF with the aggregated info
 
@@ -346,12 +353,17 @@ def bcftools_annotate_vcf(aggregated_database, minimal_vcf, output_file):
         Output filename for the minimal VCF
     output_file : str
         Output filename for annotated VCF
+    output_dir : str
+        Output directory for annotated VCF
     '''
-    # TODO: allow output file saved to diff directory
+    # Set up output directory
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, output_file)
+
     # Run bcftools annotate with pysam
     info_fields = ",".join(item["id"] for item in config.INFO_FIELDS.values())
     annotate_output = pysam.bcftools.annotate("-a", f"{aggregated_database}.gz", "-h", "header.vcf", "-c", f"CHROM,POS,REF,ALT,{info_fields}", f"{minimal_vcf}")
-    with open(output_file, 'w') as f:
+    with open(output_path, 'w') as f:
         f.write(annotate_output)
 
 
@@ -368,7 +380,7 @@ def main():
     intialise_vcf(aggregated_df, minimal_vcf)
     write_vcf_header(args.genome_build)
     index_annotations(aggregated_database)
-    bcftools_annotate_vcf(aggregated_database, minimal_vcf, args.output_file)
+    bcftools_annotate_vcf(aggregated_database, minimal_vcf, args.output_file, args.output_dir)
 
     # TODO: use keep_tmp arg in code.sh
 
