@@ -53,6 +53,14 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    parser.add_argument(
+        "--keep_tmp",
+        action='store_false',
+        help=(
+            "Bool to keep intermediate tsv annotation file"
+        ),
+    )
+
     args = parser.parse_args()
 
     return args
@@ -357,11 +365,12 @@ def main():
     probeset_df = filter_probeset(cleaned_csv, args.probeset)
     aggregated_df = aggregate_uniq_vars(probeset_df, args.probeset, aggregated_database)
 
-    # TODO: remove temp files?
     intialise_vcf(aggregated_df, minimal_vcf)
     write_vcf_header(args.genome_build)
     index_annotations(aggregated_database)
     bcftools_annotate_vcf(aggregated_database, minimal_vcf, args.output_file)
+
+    # TODO: use keep_tmp arg in code.sh
 
 
 if __name__ == "__main__":
