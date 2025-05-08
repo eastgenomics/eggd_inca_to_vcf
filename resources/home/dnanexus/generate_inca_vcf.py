@@ -20,6 +20,7 @@ def parse_args() -> argparse.Namespace:
         "-i",
         "--input_file",
         type=str,
+        required=True,
         help=(
             "CSV file exported from the previous interpretations "
             "database"
@@ -30,6 +31,7 @@ def parse_args() -> argparse.Namespace:
         "-o",
         "--output_file",
         type=str,
+        default="output.vcf",
         help=(
             "Output VCF filename"
         ),
@@ -39,6 +41,7 @@ def parse_args() -> argparse.Namespace:
         "-g",
         "--genome_build",
         type=str,
+        required=True,
         choices=["GRCh37", "GRCh38"],
         help="Genome build the samples were run in",
     )
@@ -48,6 +51,7 @@ def parse_args() -> argparse.Namespace:
         "--probeset",
         type=str,
         nargs='+',
+        default="germline somatic",
         help=(
             "probset_id or allele_origin to filter"
         ),
