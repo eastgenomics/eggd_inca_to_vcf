@@ -59,7 +59,7 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--keep_tmp",
-        action='store_false',
+        action='store_true',
         help=(
             "Bool to keep intermediate tsv annotation file"
         ),
