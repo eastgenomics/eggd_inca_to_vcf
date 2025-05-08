@@ -40,7 +40,6 @@ def parse_args() -> argparse.Namespace:
         help="Genome build the samples were run in",
     )
 
-    # TODO: str best method for inputting multiple probesets?
     parser.add_argument(
         "-set",
         "--probeset",
@@ -80,9 +79,9 @@ def clean_csv(input_file):
         delimiter=",",
         parse_dates=['date_last_evaluated'],
         low_memory=False)
-    df.rename(columns={"chromosome": "CHROM", 
-                       "start": "POS", 
-                       "reference_allele": "REF", 
+    df.rename(columns={"chromosome": "CHROM",
+                       "start": "POS",
+                       "reference_allele": "REF",
                        "alternate_allele": "ALT"}, inplace=True)
     df = df[["CHROM", "POS", "REF", "ALT"] + [ col for col in df.columns if col not in ["CHROM", "POS", "REF", "ALT"]]]
     df = df.applymap(lambda x: x.replace("\n", " ").strip() if isinstance(x, str) else x)
@@ -106,7 +105,6 @@ def filter_probeset(cleaned_csv, probeset):
     pd.DataFrame
         Dataframe filtered by probeset
     '''
-    # TODO: ensure probeset choices are only the 4
     interpreted_df = cleaned_csv[cleaned_csv['interpreted'].str.lower() == "yes"]
     if (interpreted_df['germline_classification'].isnull() & interpreted_df['oncogenicity_classification'].isnull()).any():
         raise ValueError("Both germline and oncogenicity classification are null in at least one row.")
@@ -115,8 +113,10 @@ def filter_probeset(cleaned_csv, probeset):
     for type in probeset:
         if type in ["99347387", "96527893"]:
             column = "probeset_id"
-        else:
+        elif type in ["germline", "somatic"]:
             column = "allele_origin"
+        else:
+            raise ValueError(f"Invalid argument: '{type}'. Expected one of: germline, somatic, 99347387, or 96527893.")
         filtered_df = interpreted_df.loc[interpreted_df[column] == type]
         all_dfs.append(filtered_df)
     
