@@ -1,10 +1,9 @@
 import pandas as pd
 import argparse
-import subprocess
 import config
 import pysam
 import pysam.bcftools
-import os
+import os.path
 
 
 def parse_args() -> argparse.Namespace:
@@ -281,7 +280,7 @@ def aggregate_uniq_vars(probeset_df, probeset, aggregated_database):
 
     aggregated_df = pd.DataFrame(aggregated_data)
     aggregated_df = sort_aggregated_data(aggregated_df)
-    aggregated_df.to_csv(aggregated_database, sep="\t", index=False)
+    aggregated_df.to_csv(aggregated_database, sep="\t", index=False, header=False)
 
     return aggregated_df
 
