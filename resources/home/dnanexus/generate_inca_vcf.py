@@ -1,6 +1,9 @@
 import pandas as pd
 import argparse
 import subprocess
+import config
+import pysam
+import pysam.bcftools
 
 
 def parse_args() -> argparse.Namespace:
@@ -285,7 +288,7 @@ def intialise_vcf(aggregated_df, minimal_vcf):
         vcf_lines.append(vcf_line)
 
     with open(minimal_vcf, "w") as vcf_file:
-        vcf_file.write(MINIMAL_VCF_HEADER)
+        vcf_file.write(config.MINIMAL_VCF_HEADER)
         vcf_file.write("\n".join(vcf_lines) + "\n")
 
 
@@ -300,14 +303,14 @@ def write_vcf_header(genome_build):
     '''
     with open("header.vcf", "w") as header_vcf:
         # TODO: dynamic type, change INFO_FIELDS dict above
-        for id, description in INFO_FIELDS.items():
+        for id, description in config.INFO_FIELDS.items():
             info_line = f'##INFO=<ID={id},Number=1,Type=String,Description="{description}">\n'
             header_vcf.write(info_line)
         
         if genome_build == "GRCh37":
-            header_vcf.write(GRCh37_CONTIG)
+            header_vcf.write(config.GRCh37_CONTIG)
         else:
-            header_vcf.write(GRCh38_CONTIG)
+            header_vcf.write(config.GRCh38_CONTIG)
 
 
 def index_annotations(aggregated_database):
@@ -319,21 +322,8 @@ def index_annotations(aggregated_database):
     aggregated_database : str
         Output filename of aggregated data
     '''
-    # TODO: rename sorted_ file better
-    commands = f"""
-    tail -n +2 {aggregated_database} > sorted_{aggregated_database}
-    bgzip sorted_{aggregated_database}
-    tabix -s1 -b2 -e2 sorted_{aggregated_database}.gz
-    """
-    try:
-        subprocess.run(commands,
-                       shell=True,
-                       executable="/bin/bash",
-                       capture_output=True,
-                       check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Command failed with a non-zero exit code: {e.returncode}")
-        print("Error:", e.stderr)
+    pysam.tabix_compress(f"{aggregated_database}", f"{aggregated_database}.gz")
+    pysam.tabix_index(f"{aggregated_database}.gz", seq_col=0, start_col=1, end_col=1)
 
 
 def bcftools_annotate_vcf(aggregated_database, minimal_vcf, output_file):
@@ -350,17 +340,11 @@ def bcftools_annotate_vcf(aggregated_database, minimal_vcf, output_file):
         Output filename for annotated VCF
     '''
     # TODO: allow output file saved to diff directory
-    info_fields = ",".join(INFO_FIELDS.keys())
-    bcftools_cmd = f"bcftools annotate -a sorted_{aggregated_database}.gz -h header.vcf -c CHROM,POS,REF,ALT,{info_fields} {minimal_vcf} > {output_file}"
-    print(bcftools_cmd)
-    try:
-        subprocess.run(bcftools_cmd,
-                       shell=True,
-                       capture_output=True,
-                       check=False)
-    except subprocess.CalledProcessError as e:
-        print(f"Command failed with a non-zero exit code: {e.returncode}")
-        print("Error:", e.stderr)
+    # Run bcftools annotate with pysam
+    info_fields = ",".join(item["id"] for item in config.INFO_FIELDS.values())
+    annotate_output = pysam.bcftools.annotate("-a", f"{aggregated_database}.gz", "-h", "header.vcf", "-c", f"CHROM,POS,REF,ALT,{info_fields}", f"{minimal_vcf}")
+    with open(output_file, 'w') as f:
+        f.write(annotate_output)
 
 
 def main():
@@ -374,7 +358,6 @@ def main():
     aggregated_df = aggregate_uniq_vars(probeset_df, args.probeset, aggregated_database)
 
     # TODO: remove temp files?
-    # TODO: should these functions be split in another file
     intialise_vcf(aggregated_df, minimal_vcf)
     write_vcf_header(args.genome_build)
     index_annotations(aggregated_database)
