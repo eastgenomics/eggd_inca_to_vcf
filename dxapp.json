@@ -1,0 +1,85 @@
+{
+    "name": "eggd_inca_to_vcf",
+    "title": "eggd_inca_to_vcf",
+    "summary": "Creates a VCF from an inca database export",
+    "dxapi": "1.0.0",
+    "version": "1.0.0",
+    "inputSpec": [
+      {
+        "name": "input_file",
+        "label": "Inca database export",
+        "class": "file",
+        "optional": false,
+        "patterns": [
+          "*.csv"
+        ],
+        "help": "Inca database export as a CSV file"
+      },
+      {
+        "name": "output_filename",
+        "label": "Optional output filename",
+        "class": "string",
+        "default": "output.vcf",
+        "optional": true,
+        "help": "Genome build for header annotation"
+      },
+      {
+        "name": "genome_build",
+        "label": "Genome build",
+        "class": "string",
+        "optional": false,
+        "help": "Genome build for header annotation"
+      },
+      {
+        "name": "probeset",
+        "label": "Probeset or allele origin",
+        "class": "string",
+        "default": "germline somatic",
+        "optional": false,
+        "help": "One or more probeset IDs or allele origins"
+      }
+    ],
+    "outputSpec": [
+      {
+        "name": "output_file",
+        "label": "Output VCF of aggregated info from inca database CSV",
+        "class": "file",
+        "patterns": [
+          "*.vcf"
+        ],
+        "help": "",
+        "optional": false
+      }
+    ],
+    "runSpec": {
+      "timeoutPolicy": {
+        "*": {
+          "hours": 1
+        }
+      },
+      "interpreter": "python3",
+      "file": "resources/home/dnanexus/generate_inca_vcf.py",
+      "distribution": "Ubuntu",
+      "release": "24.04",
+      "version": "0"
+    },
+    "access": {
+      "project": "CONTRIBUTE",
+      "allProjects": "CONTRIBUTE"
+    },
+    "developers":[
+      "org-emee_1"
+    ],
+    "authorizedUsers": [
+      "org-emee_1"
+    ],
+    "regionalOptions": {
+      "aws:eu-central-1": {
+        "systemRequirements": {
+          "*": {
+            "instanceType": "mem1_ssd1_v2_x2"
+          }
+        }
+      }
+    }
+  }
