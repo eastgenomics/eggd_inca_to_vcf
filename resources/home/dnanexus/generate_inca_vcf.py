@@ -67,8 +67,7 @@ def parse_args() -> argparse.Namespace:
 
     return args
 
-
-def clean_csv(input_file):
+def clean_csv(input_file) -> pd.DataFrame:
     '''
     Clean up the Inca database CSV by: 
     - Convert to tab separated instead of comma
@@ -100,8 +99,7 @@ def clean_csv(input_file):
 
     return df
 
-
-def filter_probeset(cleaned_csv, probeset):
+def filter_probeset(cleaned_csv, probeset) -> pd.DataFrame:
     '''
     Filter cleaned data to interpreted variants for specified germline/somatic probesets
 
@@ -137,8 +135,7 @@ def filter_probeset(cleaned_csv, probeset):
 
     return probeset_df
 
-
-def get_latest_entry(sub_df):
+def get_latest_entry(sub_df) -> pd.Series:
     '''
     Get latest entry by date
 
@@ -156,8 +153,7 @@ def get_latest_entry(sub_df):
     latest_entry = sub_df.loc[latest_idx]
     return latest_entry
 
-
-def aggregate_hgvs(hgvs_series):
+def aggregate_hgvs(hgvs_series) -> str:
     '''
     Aggregates all unique HGVS
 
@@ -174,8 +170,7 @@ def aggregate_hgvs(hgvs_series):
     unique_hgvs = hgvs_series.dropna().unique()
     return "|".join(unique_hgvs)
 
-
-def format_total_classifications(classifications):
+def format_total_classifications(classifications) -> str:
     '''
     Counts all classifications, including the latest classification.
     Returns classifications in the format: classification(count)|classification(count)
@@ -194,8 +189,7 @@ def format_total_classifications(classifications):
     formatted_counts = [f"{classification}({count})" for classification, count in counts.items()]
     return "|".join(formatted_counts)
 
-
-def sort_aggregated_data(aggregated_df):
+def sort_aggregated_data(aggregated_df) -> pd.DataFrame:
     '''
     Sort aggregate data
     
@@ -216,8 +210,7 @@ def sort_aggregated_data(aggregated_df):
 
     return aggregated_df
 
-
-def aggregate_uniq_vars(probeset_df, probeset, aggregated_database):
+def aggregate_uniq_vars(probeset_df, probeset, aggregated_database) -> pd.DataFrame:
     '''
     Aggregate data for each unique variant
     Similaritites to create_vcf_from_inca_csv.py by Raymond Miles
@@ -280,8 +273,7 @@ def aggregate_uniq_vars(probeset_df, probeset, aggregated_database):
 
     return aggregated_df
 
-
-def intialise_vcf(aggregated_df, minimal_vcf):
+def intialise_vcf(aggregated_df, minimal_vcf) -> None:
     ''' 
     Initialise minimal VCF with CHROM, POS, ID, REF, ALT with minimal header
 
@@ -301,8 +293,7 @@ def intialise_vcf(aggregated_df, minimal_vcf):
         vcf_file.write(config.MINIMAL_VCF_HEADER)
         vcf_file.write("\n".join(vcf_lines) + "\n")
 
-
-def write_vcf_header(genome_build, header_filename):
+def write_vcf_header(genome_build, header_filename) -> None:
     '''
     Write VCF header by populating INFO fields and specifying contigs
 
@@ -321,8 +312,7 @@ def write_vcf_header(genome_build, header_filename):
         else:
             header_vcf.write(config.GRCh38_CONTIG)
 
-
-def index_annotations(aggregated_database):
+def index_annotations(aggregated_database) -> None:
     '''
     Index the file with aggregated data
     
@@ -334,8 +324,7 @@ def index_annotations(aggregated_database):
     pysam.tabix_compress(f"{aggregated_database}", f"{aggregated_database}.gz")
     pysam.tabix_index(f"{aggregated_database}.gz", seq_col=0, start_col=1, end_col=1)
 
-
-def bcftools_annotate_vcf(aggregated_database, minimal_vcf, header_filename, output_filename):
+def bcftools_annotate_vcf(aggregated_database, minimal_vcf, header_filename, output_filename) -> None:
     '''
     Run bcftools annotate to annotate the minimal VCF with the aggregated info
 
@@ -359,8 +348,9 @@ def bcftools_annotate_vcf(aggregated_database, minimal_vcf, header_filename, out
         f.write(annotate_output)
 
 def download_input_file(remote_file) -> str:
-    """
+    '''
     Download given input file with same name as file in project
+    Function from vcf_qc.py from eggd_vcf_qc
 
     Parameters
     ----------
@@ -371,7 +361,7 @@ def download_input_file(remote_file) -> str:
     -------
     str
         name of locally downloaded file
-    """
+    '''
     local_name = dxpy.describe(remote_file).get("name")
     dxpy.bindings.dxfile_functions.download_dxfile(
         dxid=remote_file, filename=local_name
@@ -379,16 +369,16 @@ def download_input_file(remote_file) -> str:
 
     return local_name
 
-
 def upload_output_file(outfile) -> None:
-    """
+    '''
     Upload output file to set folder in current project
+    Function from vcf_qc.py from eggd_vcf_qc
 
     Parameters
     ----------
     outfile : str
         name of file to upload
-    """
+    '''
     output_project = os.environ.get("DX_PROJECT_CONTEXT_ID")
     output_folder = (
         dxpy.bindings.dxjob.DXJob(os.environ.get("DX_JOB_ID"))
