@@ -1,10 +1,19 @@
+from glob import glob
+import os
+import config
+import subprocess
+
+if os.path.exists("/home/dnanexus"):
+    # running in DNAnexus
+    subprocess.check_call(
+        ["pip", "install", "--no-index", "--no-deps"] + glob("packages/*")
+    )
+
 import pandas as pd
 import argparse
-import config
+import dxpy
 import pysam
 import pysam.bcftools
-import os.path
-
 
 def parse_args() -> argparse.Namespace:
     """
@@ -29,9 +38,8 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "-o",
-        "--output_file",
+        "--output_filename",
         type=str,
-        default="output.vcf",
         help=(
             "Output VCF filename"
         ),
@@ -50,33 +58,16 @@ def parse_args() -> argparse.Namespace:
         "-set",
         "--probeset",
         type=str,
-        nargs='+',
-        default="germline somatic",
         help=(
-            "probset_id or allele_origin to filter"
+            "probeset_id or allele_origin to filter. Comma-separated if more than one."
         ),
-    )
-
-    parser.add_argument(
-        "--keep_tmp",
-        action='store_true',
-        help=(
-            "Bool to keep intermediate tsv annotation file"
-        ),
-    )
-
-    parser.add_argument(
-        '--output_dir', 
-        default=os.getcwd(),
-        help="path to output directory"
     )
 
     args = parser.parse_args()
 
     return args
 
-
-def clean_csv(input_file):
+def clean_csv(input_file) -> pd.DataFrame:
     '''
     Clean up the Inca database CSV by: 
     - Convert to tab separated instead of comma
@@ -94,7 +85,6 @@ def clean_csv(input_file):
     pd.DataFrame
         Dataframe with cleaned up data
     '''
-    # TODO: add required_columns?
     df = pd.read_csv(
         input_file,
         delimiter=",",
@@ -109,8 +99,7 @@ def clean_csv(input_file):
 
     return df
 
-
-def filter_probeset(cleaned_csv, probeset):
+def filter_probeset(cleaned_csv, probeset) -> pd.DataFrame:
     '''
     Filter cleaned data to interpreted variants for specified germline/somatic probesets
 
@@ -146,8 +135,7 @@ def filter_probeset(cleaned_csv, probeset):
 
     return probeset_df
 
-
-def get_latest_entry(sub_df):
+def get_latest_entry(sub_df) -> pd.Series:
     '''
     Get latest entry by date
 
@@ -165,8 +153,7 @@ def get_latest_entry(sub_df):
     latest_entry = sub_df.loc[latest_idx]
     return latest_entry
 
-
-def aggregate_hgvs(hgvs_series):
+def aggregate_hgvs(hgvs_series) -> str:
     '''
     Aggregates all unique HGVS
 
@@ -183,8 +170,7 @@ def aggregate_hgvs(hgvs_series):
     unique_hgvs = hgvs_series.dropna().unique()
     return "|".join(unique_hgvs)
 
-
-def format_total_classifications(classifications):
+def format_total_classifications(classifications) -> str:
     '''
     Counts all classifications, including the latest classification.
     Returns classifications in the format: classification(count)|classification(count)
@@ -203,8 +189,7 @@ def format_total_classifications(classifications):
     formatted_counts = [f"{classification}({count})" for classification, count in counts.items()]
     return "|".join(formatted_counts)
 
-
-def sort_aggregated_data(aggregated_df):
+def sort_aggregated_data(aggregated_df) -> pd.DataFrame:
     '''
     Sort aggregate data
     
@@ -225,8 +210,7 @@ def sort_aggregated_data(aggregated_df):
 
     return aggregated_df
 
-
-def aggregate_uniq_vars(probeset_df, probeset, aggregated_database):
+def aggregate_uniq_vars(probeset_df, probeset, aggregated_database) -> pd.DataFrame:
     '''
     Aggregate data for each unique variant
     Similaritites to create_vcf_from_inca_csv.py by Raymond Miles
@@ -266,8 +250,8 @@ def aggregate_uniq_vars(probeset_df, probeset, aggregated_database):
             latest_date = latest_entry['date_last_evaluated']
             latest_sample_id = latest_entry['specimen_id']
             hgvs = aggregate_hgvs(group['hgvsc'])
-            # TODO: do we need a column for each total classification?
-            total_classifications = format_total_classifications(group[f'{classification}_classification'])
+            total_germline = format_total_classifications(group['germline_classification'])
+            total_oncogenicity = format_total_classifications(group['oncogenicity_classification'])
 
             aggregated_data.append({
                 'CHROM': latest_entry['CHROM'],
@@ -278,7 +262,8 @@ def aggregate_uniq_vars(probeset_df, probeset, aggregated_database):
                 'latest_oncogenicity': latest_oncogenicity,
                 'latest_date': latest_date,
                 'latest_sample_id': latest_sample_id,
-                'total_classifications': total_classifications,
+                'total_germline': total_germline,
+                'total_oncogenicity': total_oncogenicity,
                 'aggregated_hgvs': hgvs
         })
 
@@ -288,8 +273,7 @@ def aggregate_uniq_vars(probeset_df, probeset, aggregated_database):
 
     return aggregated_df
 
-
-def intialise_vcf(aggregated_df, minimal_vcf):
+def intialise_vcf(aggregated_df, minimal_vcf) -> None:
     ''' 
     Initialise minimal VCF with CHROM, POS, ID, REF, ALT with minimal header
 
@@ -309,8 +293,7 @@ def intialise_vcf(aggregated_df, minimal_vcf):
         vcf_file.write(config.MINIMAL_VCF_HEADER)
         vcf_file.write("\n".join(vcf_lines) + "\n")
 
-
-def write_vcf_header(genome_build, header_filename):
+def write_vcf_header(genome_build, header_filename) -> None:
     '''
     Write VCF header by populating INFO fields and specifying contigs
 
@@ -329,8 +312,7 @@ def write_vcf_header(genome_build, header_filename):
         else:
             header_vcf.write(config.GRCh38_CONTIG)
 
-
-def index_annotations(aggregated_database):
+def index_annotations(aggregated_database) -> None:
     '''
     Index the file with aggregated data
     
@@ -342,8 +324,7 @@ def index_annotations(aggregated_database):
     pysam.tabix_compress(f"{aggregated_database}", f"{aggregated_database}.gz")
     pysam.tabix_index(f"{aggregated_database}.gz", seq_col=0, start_col=1, end_col=1)
 
-
-def bcftools_annotate_vcf(aggregated_database, minimal_vcf, output_file, output_dir):
+def bcftools_annotate_vcf(aggregated_database, minimal_vcf, header_filename, output_filename) -> None:
     '''
     Run bcftools annotate to annotate the minimal VCF with the aggregated info
 
@@ -353,40 +334,102 @@ def bcftools_annotate_vcf(aggregated_database, minimal_vcf, output_file, output_
         Output filename of aggregated database
     minimal_vcf : str
         Output filename for the minimal VCF
-    output_file : str
+    output_filename : str
         Output filename for annotated VCF
-    output_dir : str
-        Output directory for annotated VCF
     '''
-    # Set up output directory
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, output_file)
-
     # Run bcftools annotate with pysam
     info_fields = ",".join(item["id"] for item in config.INFO_FIELDS.values())
-    annotate_output = pysam.bcftools.annotate("-a", f"{aggregated_database}.gz", "-h", "header.vcf", "-c", f"CHROM,POS,REF,ALT,{info_fields}", f"{minimal_vcf}")
-    with open(output_path, 'w') as f:
+    annotate_output = pysam.bcftools.annotate(
+        "-a", f"{aggregated_database}.gz", 
+        "-h", f"{header_filename}", 
+        "-c", f"CHROM,POS,REF,ALT,{info_fields}", 
+        f"{minimal_vcf}")
+    with open(output_filename, 'w') as f:
         f.write(annotate_output)
 
+def download_input_file(remote_file) -> str:
+    '''
+    Download given input file with same name as file in project
+    Function from vcf_qc.py from eggd_vcf_qc
 
-def main():
-    args = parse_args()
+    Parameters
+    ----------
+    remote_file : dict
+        DNAnexus input file
 
+    Returns
+    -------
+    str
+        name of locally downloaded file
+    '''
+    local_name = dxpy.describe(remote_file).get("name")
+    dxpy.bindings.dxfile_functions.download_dxfile(
+        dxid=remote_file, filename=local_name
+    )
+
+    return local_name
+
+def upload_output_file(outfile) -> None:
+    '''
+    Upload output file to set folder in current project
+    Function from vcf_qc.py from eggd_vcf_qc
+
+    Parameters
+    ----------
+    outfile : str
+        name of file to upload
+    '''
+    output_project = os.environ.get("DX_PROJECT_CONTEXT_ID")
+    output_folder = (
+        dxpy.bindings.dxjob.DXJob(os.environ.get("DX_JOB_ID"))
+        .describe()
+        .get("folder", "/")
+    )
+    print(f"\nUploading {outfile} to {output_project}:{output_folder}")
+
+    dxpy.set_workspace_id(output_project)
+    dxpy.api.project_new_folder(
+        output_project, input_params={"folder": output_folder, "parents": True}
+    )
+    
+    url_file = dxpy.upload_local_file(
+        filename=outfile,
+        folder=output_folder,
+        wait_on_close=True,
+    )
+
+    return {"output_file": dxpy.dxlink(url_file)}
+
+@dxpy.entry_point("main")
+def main(input_file: str,
+         output_filename: str,
+         genome_build: str,
+         probeset: str):
+    if os.path.exists("/home/dnanexus"):
+        input_file = download_input_file(input_file)
+
+    probeset = [x.strip().lower() for x in probeset.split(",")]
     minimal_vcf = "minimal_vcf.vcf"
     header_filename = "header.vcf"
-    aggregated_database = f"{'_'.join(args.probeset)}_aggregated_database.tsv"
+    aggregated_database = f"{'_'.join(probeset)}_aggregated_database.tsv"
 
-    cleaned_csv = clean_csv(args.input_file)
-    probeset_df = filter_probeset(cleaned_csv, args.probeset)
-    aggregated_df = aggregate_uniq_vars(probeset_df, args.probeset, aggregated_database)
+    cleaned_csv = clean_csv(input_file)
+    probeset_df = filter_probeset(cleaned_csv, probeset)
+    aggregated_df = aggregate_uniq_vars(probeset_df, probeset, aggregated_database)
 
     intialise_vcf(aggregated_df, minimal_vcf)
-    write_vcf_header(args.genome_build, header_filename)
+    write_vcf_header(genome_build, header_filename)
     index_annotations(aggregated_database)
-    bcftools_annotate_vcf(aggregated_database, minimal_vcf, args.output_file, args.output_dir)
+    bcftools_annotate_vcf(aggregated_database, minimal_vcf, header_filename, output_filename)
 
-    # TODO: use keep_tmp arg in code.sh
+    if os.path.exists("/home/dnanexus"):
+        uploaded_file = upload_output_file(output_filename)
+
+        return uploaded_file
 
 
-if __name__ == "__main__":
-    main()
+if os.path.exists("/home/dnanexus"):
+    dxpy.run()
+elif __name__ == "__main__":
+    args = parse_args()
+    main(args.input_file, args.output_filename, args.genome_build, args.probeset)

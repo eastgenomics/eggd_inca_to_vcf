@@ -19,12 +19,16 @@ INFO_FIELDS = {
         "number": 1,
         "type": "String",
         "description": "Latest sample ID with classification"},
-    "total_classifications": {
-        "id": "TOTAL_CLASSIFICATIONS",
+    "total_germline": {
+        "id": "TOTAL_GERMLINE",
         "number": 1,
-    # this breaks the script when set to be integer ???
         "type": "String",
-        "description": "Total number of classification"},
+        "description": "Total number of germline classifications"},
+    "total_oncogenicity": {
+        "id": "TOTAL_ONCOGENICITY",
+        "number": 1,
+        "type": "String",
+        "description": "Total number of oncogenicity classifications"},
     "aggregated_hgvs": {
         "id": "AGGREGATED_HGVS",
         "number": 1,
