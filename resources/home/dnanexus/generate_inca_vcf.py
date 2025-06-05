@@ -99,7 +99,7 @@ def clean_csv(input_file) -> pd.DataFrame:
 
     return df
 
-def filter_probeset(cleaned_csv, probeset) -> pd.DataFrame:
+def filter_probeset(cleaned_csv, probeset, genome_build) -> pd.DataFrame:
     '''
     Filter cleaned data to interpreted variants for specified germline/somatic probesets
 
@@ -109,6 +109,8 @@ def filter_probeset(cleaned_csv, probeset) -> pd.DataFrame:
         Dataframe with cleaned up data
     probeset : str
         Germline or somatic choice
+    genome_build : str
+        Genome build to filter
 
     Returns
     -------
@@ -118,6 +120,11 @@ def filter_probeset(cleaned_csv, probeset) -> pd.DataFrame:
     interpreted_df = cleaned_csv[cleaned_csv['interpreted'].str.lower() == "yes"]
     if (interpreted_df['germline_classification'].isnull() & interpreted_df['oncogenicity_classification'].isnull()).any():
         raise ValueError("Both germline and oncogenicity classification are null in at least one row.")
+    
+    if genome_build == "GRCh37":
+        prefiltered_df = interpreted_df[interpreted_df['ref_genome'].str.contains("grch37", na=False, case=False)]
+    else:
+        prefiltered_df = interpreted_df[interpreted_df['ref_genome'].str.contains("grch38", na=False, case=False)]
 
     all_dfs = []
     for type in probeset:
@@ -127,7 +134,7 @@ def filter_probeset(cleaned_csv, probeset) -> pd.DataFrame:
             column = "allele_origin"
         else:
             raise ValueError(f"Invalid argument: '{type}'. Expected one of: germline, somatic, 99347387, or 96527893.")
-        filtered_df = interpreted_df.loc[interpreted_df[column] == type]
+        filtered_df = prefiltered_df.loc[prefiltered_df[column] == type]
         all_dfs.append(filtered_df)
     
     probeset_df = pd.concat(all_dfs, ignore_index=True)
@@ -414,7 +421,7 @@ def main(input_file: str,
     aggregated_database = f"{'_'.join(probeset)}_aggregated_database.tsv"
 
     cleaned_csv = clean_csv(input_file)
-    probeset_df = filter_probeset(cleaned_csv, probeset)
+    probeset_df = filter_probeset(cleaned_csv, probeset, genome_build)
     aggregated_df = aggregate_uniq_vars(probeset_df, probeset, aggregated_database)
 
     intialise_vcf(aggregated_df, minimal_vcf)

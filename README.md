@@ -25,7 +25,7 @@ dx run ${app_id} \
 -iinput_file= \
 -igenome_build= \
 -iprobeset= \
-[ -ioutput_file_name= ] \
+[ -ioutput_filename= ] \
 -y
 
 # locally
